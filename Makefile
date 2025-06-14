@@ -19,7 +19,14 @@ export KEYSTONE_SDK             ?= $(KEYSTONE)/sdk
 export KEYSTONE_BOOTROM         ?= $(KEYSTONE)/bootrom
 export KEYSTONE_SM              ?= $(KEYSTONE)/sm
 
-export BUILDDIR                 ?= $(KEYSTONE)/build-$(KEYSTONE_PLATFORM)$(KEYSTONE_BITS)
+
+ifeq ($(origin RT),undefined)
+    $(info stock)
+    export BUILDDIR             ?= $(KEYSTONE)/build-$(KEYSTONE_PLATFORM)$(KEYSTONE_BITS)
+else
+    export BUILDDIR             ?= $(KEYSTONE)/build-$(KEYSTONE_PLATFORM)$(KEYSTONE_BITS)_rt
+endif
+
 export BUILDROOT_OVERLAYDIR     ?= $(BUILDDIR)/overlay
 export BUILDROOT_BUILDDIR       ?= $(BUILDDIR)/buildroot.build
 
@@ -31,7 +38,13 @@ export KEYSTONE_BITS            ?= 64
 include mkutils/args.mk
 include mkutils/log.mk
 
-BUILDROOT_CONFIGFILE    ?= riscv$(KEYSTONE_BITS)_$(KEYSTONE_PLATFORM)_defconfig
+ifeq ($(origin RT), undefined)
+    BUILDROOT_CONFIGFILE        ?= riscv$(KEYSTONE_BITS)_$(KEYSTONE_PLATFORM)_defconfig
+else
+    BUILDROOT_CONFIGFILE        ?= riscv$(KEYSTONE_BITS)_$(KEYSTONE_PLATFORM)_rt_defconfig
+endif
+
+
 ifeq ($(KEYSTONE_PLATFORM),mpfs)
 	EXTERNALS		+= microchip
 	ADDITIONAL_OVERLAYS  	:= \$$(BR2_EXTERNAL_MCHP_PATH)/board/microchip/icicle/rootfs-overlay
