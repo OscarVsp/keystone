@@ -36,4 +36,5 @@ add_subdirectory(hello-native)
 add_subdirectory(attestation)
 add_subdirectory(tests)
 add_subdirectory(latency)
+add_subdirectory(enclave-latency)
 
