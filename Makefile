@@ -90,6 +90,7 @@ $(BUILDROOT_BUILDDIR)/.config: $(BUILDROOT_BUILDDIR)
 
 $(BUILDROOT_OVERLAYDIR)/.done: $(BUILDROOT_OVERLAYDIR)
 	$(call log,info,Setting up overlay)
+	cp -r $(KEYSTONE_BR2_EXT)/keystone/fs/* $(BUILDROOT_OVERLAYDIR)
 	mkdir -p $(BUILDROOT_OVERLAYDIR)/root/.ssh
 	ssh-keygen -C 'root@keystone' -t rsa -f $(BUILDROOT_OVERLAYDIR)/root/.ssh/id-rsa -N ''
 	cp -f $(BUILDROOT_OVERLAYDIR)/root/.ssh/{id-rsa.pub,authorized_keys} 
