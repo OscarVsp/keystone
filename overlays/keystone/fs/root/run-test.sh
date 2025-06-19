@@ -38,7 +38,7 @@ stress-ng --all 1 -t $DURATION -x netlink-task,swap --log-file stress-ng.log &
 stressng_pid=$!
 
 #cyclictest -vm -i100 -p99 -t --duration=$DURATION > cyclictest.log &
-/usr/share/keystone/examples/latency.ke -- -vm -i100000 -p99 -t --duration=30s > cyclictest.log &
+/usr/share/keystone/examples/latency.ke -- -vm -i1000000 -p99 -t --duration=30s > cyclictest.log &
 
 cyclictest_pid=$!
 
