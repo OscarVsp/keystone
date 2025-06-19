@@ -1179,7 +1179,7 @@ static void *enclave_thread(void *param)
 		}
 
 
-		if (no_enclave){
+		if (!no_enclave){
 			Enclave enclave;
 			enclave.init(enc->eapppath, enc->runtimepath, enc->loaderpath, enc_params);
 			enclave.registerOcallDispatch(incoming_call_dispatch);
@@ -2722,6 +2722,7 @@ main(int argc, char** argv) {
 	int i, ret = -1;
 	int status;
 
+	/*remove the initial argv[1->3] that are use for the enclave*/
 	int opt_argc = argc - 3;
     char **opt_argv = &argv[3];
 
