@@ -7,6 +7,7 @@
 #include <time.h>
 #include <errno.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 using namespace Keystone;
 
@@ -90,7 +91,7 @@ main(int argc, char** argv) {
 
   int ret;
   int count;
-  double avg_start, avg_end = 0.0;
+  int64_t avg_start, avg_end = 0.0;
   struct timespec start, end;
 
   printf("Starting enclave runtime test\n");
@@ -103,7 +104,7 @@ main(int argc, char** argv) {
   for (count=0; count < iter; count ++){
     
     Enclave enclave;
-    double start_enc, enc_end;
+    int64_t start_enc, enc_end;
 
     ret = clock_gettime(CLOCK_REALTIME , &start);
 		if (ret != 0) {
@@ -111,7 +112,8 @@ main(int argc, char** argv) {
 			return -1;
 		}
     //printf("host start: %ld.%09ld\n", start.tv_sec, start.tv_nsec);
-    
+
+    printf("[%d/%d]\n", count, iter);
     
     enclave.init(argv[1], argv[2], argv[3], params);
     enclave.registerOcallDispatch(incoming_call_dispatch);
@@ -128,19 +130,22 @@ main(int argc, char** argv) {
     //printf("enclave received: %ld.%09ld\n", enc_time.tv_sec, enc_time.tv_nsec);
     //printf("end: %ld.%09ld\n", end.tv_sec, end.tv_nsec);
 
-    start_enc = (double)calcdiff(enc_time,start);
-    enc_end  = (double)calcdiff(end, enc_time);
+    start_enc = calcdiff(enc_time,start);
+    enc_end  = calcdiff(end, start);
 
-    printf("[%d/%d] Enclave delay delay: %fus\n", count, iter, start_enc);
+    printf("\tEnclave start duration: %" PRId64 "us\n", start_enc);
+    printf("\tEnclave run duration: %" PRId64 "us\n", enc_end);
 
-    avg_start += (double)start_enc / iter;
+    avg_start += start_enc / iter;
 
-    avg_end += (double)enc_end / iter;
+    avg_end += enc_end / iter;
 
 
   }
 
-  printf("Avg (%d interation):\n\tstart enclave latency: %fus\n\tend enclave latency: %fus\n\ttotal enclave latency: %fus\n", iter, avg_start, avg_end, avg_start+avg_end);
+  printf("-----------------------------------------\n");
+
+  printf("Avg (%d interation):\n\tstart enclave latency: %" PRId64 "us\n\tend enclave latency: %" PRId64 "us\n\ttotal enclave latency: %" PRId64 "us\n", iter, avg_start, avg_end, avg_start+avg_end);
 
   printf("Test finished\n");
 
