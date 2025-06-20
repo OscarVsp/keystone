@@ -62,14 +62,19 @@ static inline int tsgreater(struct timespec *a, struct timespec *b)
 static struct timespec enc_time = {0};
 
 int
-receive_enc_time(struct timespec* new_enc_time);
+receive_enc_time();
 void
 receive_enc_time_wrapper(void* buffer);
 #define OCALL_ENC_TIME 1
 
 int
-receive_enc_time(struct timespec* new_enc_time) {
-  enc_time = *new_enc_time;
+receive_enc_time() {
+  int ret;
+  ret = clock_gettime(CLOCK_REALTIME , &enc_time);
+		if (ret != 0) {
+			printf("Error getting time. error code: %d\n", errno);
+			return -1;
+		}
   return 1;
 }
 
@@ -118,8 +123,8 @@ main(int argc, char** argv) {
 			return -1;
 		}
 
-    start_enc = calcdiff(start, enc_time);
-    enc_end  = calcdiff(enc_time, end);
+    start_enc = (double)calcdiff(enc_time,start);
+    enc_end  = (double)calcdiff(end, enc_time);
 
     avg_start += (double)start_enc / N_ITER;
 

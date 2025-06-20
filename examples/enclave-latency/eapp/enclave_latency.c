@@ -7,14 +7,14 @@
 
 #define OCALL_ENC_TIME 1
 
-int ocall_enc_time(struct timespec* enc_time);
+int ocall_enc_time();
 
 int main()
 {
 
   struct timespec now;
   int ret;
-  ret = clock_gettime(CLOCK_MONOTONIC, &now);
+  ocall_enc_time();
   if (ret != 0) {
     printf("Error getting time. error code: %d\n", errno);
     return -1;
@@ -23,8 +23,7 @@ int main()
   return 0;
 }
 
-int ocall_enc_time(struct timespec* enc_time){
-  int retval;
-  ocall(OCALL_ENC_TIME, enc_time, sizeof(enc_time), &retval ,sizeof(int));
-  return retval;
+int ocall_enc_time(){
+  ocall(OCALL_ENC_TIME, NULL, 0, NULL, 0);
+  return 1;
 }
