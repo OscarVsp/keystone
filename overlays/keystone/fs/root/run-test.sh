@@ -2,6 +2,7 @@
 
 # Initialize variables
 DURATION="1h"
+INTERVAL=100
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
@@ -12,6 +13,15 @@ while [[ $# -gt 0 ]]; do
                 shift 2
             else
                 echo "Error: -t option requires an argument."
+                exit 1
+            fi
+            ;;
+        -i)
+            if [[ -n "$2" ]]; then
+                INTERVAL="$2"
+                shift 2
+            else
+                echo "Error: -i option requires an argument."
                 exit 1
             fi
             ;;
@@ -38,7 +48,7 @@ stress-ng --all 1 -t $DURATION -x netlink-task,swap --log-file stress-ng.log &
 stressng_pid=$!
 
 #cyclictest -vm -i100 -p99 -t --duration=$DURATION > cyclictest.log &
-/usr/share/keystone/examples/latency.ke -- -vm -i1000000 -p99 -t --duration=30s > cyclictest.log &
+/usr/share/keystone/examples/latency.ke -- -vm -i$INTERVAL -p99 -t --duration=$DURATION > cyclictest.log &
 
 cyclictest_pid=$!
 
