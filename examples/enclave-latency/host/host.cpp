@@ -10,8 +10,6 @@
 
 using namespace Keystone;
 
-#define N_ITER 100
-
 #define MSEC_PER_SEC		1000
 #define USEC_PER_SEC		1000000
 #define NSEC_PER_SEC		1000000000
@@ -67,6 +65,8 @@ void
 receive_enc_time_wrapper(void* buffer);
 #define OCALL_ENC_TIME 1
 
+
+//FIXME: timespec nsec is not the one printed from the enclave, and stay const acros time
 int
 receive_enc_time() {
   int ret;
@@ -83,6 +83,8 @@ main(int argc, char** argv) {
   
   Params params;
 
+  int iter = atoi(argv[4]);;
+
   params.setFreeMemSize(256 * 1024);
   params.setUntrustedSize(256 * 1024);
 
@@ -98,16 +100,17 @@ main(int argc, char** argv) {
   req.tv_sec = 0;
   req.tv_nsec = 100 * 1000000L;  // 500 ms in nanoseconds
 
-  for (count=0; count < N_ITER; count ++){
+  for (count=0; count < iter; count ++){
     
     Enclave enclave;
-    int64_t start_enc, enc_end;
+    double start_enc, enc_end;
 
-    ret = clock_gettime(CLOCK_MONOTONIC, &start);
+    ret = clock_gettime(CLOCK_REALTIME , &start);
 		if (ret != 0) {
 			printf("Error getting time. error code: %d\n", errno);
 			return -1;
 		}
+    //printf("host start: %ld.%09ld\n", start.tv_sec, start.tv_nsec);
     
     
     enclave.init(argv[1], argv[2], argv[3], params);
@@ -117,28 +120,27 @@ main(int argc, char** argv) {
         (uintptr_t)enclave.getSharedBuffer(), enclave.getSharedBufferSize());
     enclave.run();
 
-    ret = clock_gettime(CLOCK_MONOTONIC, &end);
+    ret = clock_gettime(CLOCK_REALTIME , &end);
 		if (ret != 0) {
 			printf("Error getting time. error code: %d\n", errno);
 			return -1;
 		}
+    //printf("enclave received: %ld.%09ld\n", enc_time.tv_sec, enc_time.tv_nsec);
+    //printf("end: %ld.%09ld\n", end.tv_sec, end.tv_nsec);
 
     start_enc = (double)calcdiff(enc_time,start);
     enc_end  = (double)calcdiff(end, enc_time);
 
-    avg_start += (double)start_enc / N_ITER;
+    printf("[%d/%d] Enclave delay delay: %fus\n", count, iter, start_enc);
 
-    avg_end += (double)enc_end / N_ITER;
+    avg_start += (double)start_enc / iter;
 
-    
+    avg_end += (double)enc_end / iter;
 
-    if (count % 10 == 0) {
-      printf("[%d/%d]\n", count, N_ITER);
-    }
 
   }
 
-  printf("Avg (%d interation):\n\tstart enclave latency: %fus\n\tend enclave latency: %fus\n", N_ITER, avg_start, avg_end);
+  printf("Avg (%d interation):\n\tstart enclave latency: %fus\n\tend enclave latency: %fus\n\ttotal enclave latency: %fus\n", iter, avg_start, avg_end, avg_start+avg_end);
 
   printf("Test finished\n");
 
@@ -160,13 +162,13 @@ receive_enc_time_wrapper(void* buffer) {
   }
 
   /* Pass the arguments from the eapp to the exported ocall function */
-  ret_val = receive_enc_time((struct timespec*)call_args);
+  ret_val = receive_enc_time();
 
   /* Setup return data from the ocall function */
   uintptr_t data_section = edge_call_data_ptr();
-  memcpy((void*)data_section, &ret_val, sizeof(int));
+  memcpy((void*)data_section, nullptr, 0);
   if (edge_call_setup_ret(
-          edge_call, (void*)data_section, sizeof(int))) {
+          edge_call, (void*)data_section, 0)) {
     edge_call->return_data.call_status = CALL_STATUS_BAD_PTR;
   } else {
     edge_call->return_data.call_status = CALL_STATUS_OK;
