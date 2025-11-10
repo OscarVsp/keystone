@@ -4,11 +4,14 @@
 //------------------------------------------------------------------------------
 #include "edge/edge_call.h"
 #include "host/keystone.h"
+#include "time.h"
 
 using namespace Keystone;
 
+
 int
 main(int argc, char** argv) {
+
   Enclave enclave;
   Params params;
 
@@ -22,6 +25,7 @@ main(int argc, char** argv) {
       (uintptr_t)enclave.getSharedBuffer(), enclave.getSharedBufferSize());
 
   enclave.run();
+  
 
   return 0;
 }

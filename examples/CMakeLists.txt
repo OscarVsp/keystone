@@ -31,9 +31,9 @@ set(KEYSTONE_LIB_EAPP ${KEYSTONE_SDK_DIR}/lib/libkeystone-eapp.a)
 add_custom_target("examples")
 
 # add all examples below
+add_subdirectory(attestation)
 add_subdirectory(hello)
 add_subdirectory(hello-native)
-add_subdirectory(attestation)
-add_subdirectory(tests)
 add_subdirectory(latency)
-add_subdirectory(enclave-latency)
+add_subdirectory(loop-task)
+add_subdirectory(tests)

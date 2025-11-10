@@ -1,6 +1,9 @@
+#include "app/eapp_utils.h"
 
-int main()
+unsigned long main()
 {
-  asm("nop");
-  return 0;
+  unsigned long cycles;
+  __asm__ __volatile__("rdtime %0" : "=r"(cycles));
+
+  EAPP_RETURN(cycles);
 }

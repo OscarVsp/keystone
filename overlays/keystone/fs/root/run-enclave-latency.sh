@@ -37,14 +37,14 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-#echo "Starting iperf3 server..."
+echo "Starting iperf3 server..."
 
-#iperf3 -s > iperf3.log &
-#iperf3_pid=$!
+iperf3 -s > iperf3.log &
+iperf3_pid=$!
 
-#echo "iperf3 server started. Start the iperf client before continuing."
+echo "iperf3 server started. Start the iperf client before continuing."
 
-#read -p "Press enter to continue..."
+read -p "Press enter to continue..."
 
 
 echo "Running stress-ng and cyclictest for a duration of $DURATION..."
@@ -53,15 +53,11 @@ stress-ng --all 1 -t $DURATION -x netlink-task,swap --log-file stress-ng.log > /
 
 PIDS+=($!)
 
-modprobe keystone-driver
-
-/usr/share/keystone/examples/loop-task.ke > loop-task.log &
-
-PIDS+=($!)
-
-cyclictest -vm -i100 -p99 -t --duration=$DURATION > cyclictest.log &
-
-cyclictest_pid=$!
+/usr/share/keystone/examples/latency.ke -- -a0 -vm -i1000000 -p99 -t --duration=$DURATION > cyclictest0.log &
+/usr/share/keystone/examples/latency.ke -- -a1 -vm -i1000000 -p99 -t --duration=$DURATION > cyclictest1.log &
+/usr/share/keystone/examples/latency.ke -- -a2 -vm -i1000000 -p99 -t --duration=$DURATION > cyclictest2.log &
+/usr/share/keystone/examples/latency.ke -- -a3 -vm -i1000000 -p99 -t --duration=$DURATION > cyclictest3.log &
+cyclictest_pid+=$!
 
 
 wait "$cyclictest_pid"

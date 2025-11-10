@@ -28,52 +28,57 @@
 using namespace Keystone;
 
 
-#define DEFAULT_INTERVAL 1000
-#define DEFAULT_DISTANCE 500
-
-#define MSEC_PER_SEC		1000
-#define USEC_PER_SEC		1000000
-#define NSEC_PER_SEC		1000000000
-#define USEC_TO_NSEC(u)		((u) * 1000)
-#define USEC_TO_SEC(u)		((u) / USEC_PER_SEC)
-#define NSEC_TO_USEC(n)		((n) / 1000)
-#define SEC_TO_NSEC(s)		((s) * NSEC_PER_SEC)
-#define SEC_TO_USEC(s)		((s) * USEC_PER_SEC)
-
-#define sigev_notify_thread_id _sigev_un._tid
+#define DEFAULT_INTERVAL 		1000
+#define DEFAULT_DISTANCE 		500
 
 
-#define _STR(x) #x
-#define STR(x) _STR(x)
 
-#define MAX_PATH 256
+#define MSEC_PER_SEC			1000
+#define USEC_PER_SEC			1000000
+#define NSEC_PER_SEC			1000000000
+#define USEC_TO_NSEC(u)			((u) * 1000)
+#define USEC_TO_SEC(u)			((u) / USEC_PER_SEC)
+#define NSEC_TO_USEC(n)			((n) / 1000)
+#define SEC_TO_NSEC(s)			((s) * NSEC_PER_SEC)
+#define SEC_TO_USEC(s)			((s) * USEC_PER_SEC)
 
-#define HIST_MAX		1000000
+#define CLOCK_FREQ 1000000UL    // HiFive Unmatched clock is 1MHz
+#define NSEC_PER_CYCLE (NSEC_PER_SEC / CLOCK_FREQ)
 
-#define MODE_CYCLIC		0
+#define sigev_notify_thread_id 	_sigev_un._tid
+
+
+#define _STR(x) 				#x
+#define STR(x) 					_STR(x)
+
+#define MAX_PATH 				256
+
+#define HIST_MAX				1000000
+
+#define MODE_CYCLIC				0
 #define MODE_CLOCK_NANOSLEEP	1
-#define MODE_SYS_ITIMER		2
-#define MODE_SYS_NANOSLEEP	3
-#define MODE_SYS_OFFSET		2
-#define TIMER_RELTIME		0
+#define MODE_SYS_ITIMER			2
+#define MODE_SYS_NANOSLEEP		3
+#define MODE_SYS_OFFSET			2
+#define TIMER_RELTIME			0
 
-#define  TRACEBUFSIZ  1024
-#define DEFAULT_INTERVAL 1000
+#define TRACEBUFSIZ  			1024
+#define DEFAULT_INTERVAL 		1000
 
-#define  MAX_COMMAND_LINE 4096
-#define  MAX_TS_SIZE 64
+#define MAX_COMMAND_LINE 		4096
+#define MAX_TS_SIZE 			64
 
 #ifndef SCHED_NORMAL
 #define SCHED_NORMAL SCHED_OTHER
 #endif
 
-#define HSET_PRINT_SUM		1
-#define HSET_PRINT_JSON		2
+#define HSET_PRINT_SUM			1
+#define HSET_PRINT_JSON			2
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 /* Must be power of 2 ! */
-#define VALBUF_SIZE		16384
+#define VALBUF_SIZE				16384
 
 static int numa = 0;
 
@@ -287,6 +292,17 @@ static inline void tsnorm(struct timespec *ts)
 		ts->tv_nsec -= NSEC_PER_SEC;
 		ts->tv_sec++;
 	}
+}
+
+static inline void rdtimespec(unsigned long rdtime, struct timespec *ts){
+	ts->tv_sec = rdtime / CLOCK_FREQ;
+    ts->tv_nsec = (rdtime % CLOCK_FREQ) * NSEC_PER_CYCLE;
+}
+
+static inline void get_rdtime(struct timespec *ts){
+	unsigned long rdtime;
+	__asm__ __volatile__("rdtime %0" : "=r"(rdtime));
+    rdtimespec(rdtime, ts);
 }
 
 static inline int tsgreater(struct timespec *a, struct timespec *b)
@@ -1002,7 +1018,7 @@ static void *enclave_thread(void *param)
 	struct sigevent sigev;
 	sigset_t sigset;
 	timer_t timer;
-	struct timespec now, next, interval, stop = { 0 };
+	struct timespec now, next, now_rd, next_rd, interval, stop = { 0 };
 	struct itimerval itimer;
 	struct itimerspec tspec;
 	struct thread_stat *stat = par->stats;
@@ -1010,11 +1026,13 @@ static void *enclave_thread(void *param)
 	cpu_set_t mask;
 	pthread_t thread;
 	unsigned long smi_now, smi_old = 0;
+	
 
 	struct enclave_args *enc = par->enc_args;
+	uintptr_t rdtime;
 	Params enc_params;
-	enc_params.setFreeMemSize(256 * 1024);
-	enc_params.setUntrustedSize(256 * 1024);
+	enc_params.setFreeMemSize(512 * 1024);
+	enc_params.setUntrustedSize(512 * 1024);
 
 	/* if we're running in numa mode, set our memory node */
 	if (par->node != -1)
@@ -1093,6 +1111,13 @@ static void *enclave_thread(void *param)
 	next.tv_sec += interval.tv_sec;
 	next.tv_nsec += interval.tv_nsec;
 	tsnorm(&next);
+
+	//Get time from rdtime for stats
+	get_rdtime(&now_rd);
+	next_rd = now_rd;
+	next_rd.tv_sec += interval.tv_sec;
+	next_rd.tv_nsec += interval.tv_nsec;
+	tsnorm(&next_rd);
 
 	if (duration) {
 		stop = now;
@@ -1185,7 +1210,10 @@ static void *enclave_thread(void *param)
 			enclave.registerOcallDispatch(incoming_call_dispatch);
 			edge_call_init_internals(
 				(uintptr_t)enclave.getSharedBuffer(), enclave.getSharedBufferSize());
-			enclave.run();
+			enclave.run(&rdtime);
+			rdtimespec((unsigned long) rdtime, &now_rd);
+		} else {
+			get_rdtime(&now_rd);
 		}
 
 		ret = clock_gettime(par->clock, &now);
@@ -1208,9 +1236,9 @@ static void *enclave_thread(void *param)
 		}
 
 		if (use_nsecs)
-			diff = calcdiff_ns(now, next);
+			diff = calcdiff_ns(now_rd, next_rd);
 		else
-			diff = calcdiff(now, next);
+			diff = calcdiff(now_rd, next_rd);
 		if (diff < stat->min)
 			stat->min = diff;
 		if (diff > stat->max) {
@@ -1221,7 +1249,7 @@ static void *enclave_thread(void *param)
 		stat->avg += (double) diff;
 
 		if (trigger && (diff > trigger))
-			trigger_update(par, diff, calctime(now));
+			trigger_update(par, diff, calctime(now_rd));
 
 		if (duration && (calcdiff(now, stop) >= 0))
 			shutdown++;
@@ -1265,6 +1293,21 @@ static void *enclave_thread(void *param)
 			next.tv_sec += interval.tv_sec;
 			next.tv_nsec += interval.tv_nsec;
 			tsnorm(&next);
+		}
+
+		next_rd.tv_sec += interval.tv_sec;
+		next_rd.tv_nsec += interval.tv_nsec;
+		if (par->mode == MODE_CYCLIC) {
+			int overrun_count = timer_getoverrun(timer);
+			next_rd.tv_sec += overrun_count * interval.tv_sec;
+			next_rd.tv_nsec += overrun_count * interval.tv_nsec;
+		}
+		tsnorm(&next_rd);
+
+		while (tsgreater(&now_rd, &next_rd)) {
+			next_rd.tv_sec += interval.tv_sec;
+			next_rd.tv_nsec += interval.tv_nsec;
+			tsnorm(&next_rd);
 		}
 
 		if (par->max_cycles && par->max_cycles == stat->cycles)

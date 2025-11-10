@@ -9,8 +9,12 @@ set(eyrie_plugins "io_syscall linux_syscall env_setup")
 # eapp
 
 add_executable(${eapp_bin} ${eapp_src})
-target_link_libraries(${eapp_bin} "-static")
+target_link_libraries(${eapp_bin} "-static" ${KEYSTONE_LIB_EAPP} ${KEYSTONE_LIB_EDGE})
 
+target_include_directories(${eapp_bin}
+  PUBLIC ${KEYSTONE_SDK_DIR}/include/app
+  PUBLIC ${KEYSTONE_SDK_DIR}/include/edge)
+  
 # host
 
 # Find the NUMA library
