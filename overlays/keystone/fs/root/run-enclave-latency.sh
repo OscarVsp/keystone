@@ -3,8 +3,10 @@
 # Initialize variables
 DURATION="1h"
 SKIP_LOAD=0
-NUM_THREADS=4
-NUM_LOOP=0
+NUM_THREADS=2
+NUM_LOOP=10
+BASE_INTERVAL=100
+DIFF_INTERVAL=10
 declare -a PIDS=()
 
 cleanup() {
@@ -41,6 +43,24 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             ;;
+        -i)
+            if [[ -n "$2" ]]; then
+                BASE_INTERVAL="$2"
+                shift 2
+            else
+                echo "Error: -i option requires an argument."
+                exit 1
+            fi
+            ;;
+        -d)
+            if [[ -n "$2" ]]; then
+                DIFF_INTERVAL="$2"
+                shift 2
+            else
+                echo "Error: -d option requires an argument."
+                exit 1
+            fi
+            ;;
         -n)
             if [[ -n "$2" ]] && [[ "$2" =~ ^[1-4]$ ]]; then
                 NUM_THREADS="$2"
@@ -50,15 +70,15 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             ;;
-        -d)
+        -s)
             SKIP_LOAD=1
-            shift
+            shift 1
             ;;
         *)
             echo "Unknown option: $1"
             echo "Usage: $0 [-t DURATION] [-d] [-n NUM_THREADS]"
             echo "  -t DURATION     Set test duration (default: 1h)"
-            echo "  -d              Skip iperf3 and stress-ng, run only latency tests"
+            echo "  -s              Skip iperf3 and stress-ng, run only latency tests"
             echo "  -n NUM_THREADS  Number of latency test threads to run (1-4, default: 4)"
             exit 1
             ;;
@@ -84,8 +104,13 @@ fi
 CPU_AFFINITY="0-$((NUM_THREADS - 1))"
 
 # Run latency test with N threads
-echo "Running cyclictest with $NUM_THREADS thread(s) on CPUs $CPU_AFFINITY for duration of $DURATION with a max loop of $NUM_LOOP"
-/usr/share/keystone/examples/cyclictest.ke -- -l $NUM_LOOP -a$CPU_AFFINITY -vm -i2000000  -d10 -p99 -t $NUM_THREADS --duration=$DURATION > cyclictest.log &
+echo "Running cyclictest with following parameters:"
+echo "  Number of thread(s): $NUM_THREADS | CPU(s) affinities: $CPU_AFFINITY"
+echo "  Duration: $DURATION | Max loop: $NUM_LOOP"
+echo "  Base interval: $BASE_INTERVAL | Diff interval: $DIFF_INTERVAL"
+
+
+/usr/share/keystone/examples/cyclictest.ke -- -l $NUM_LOOP -a$CPU_AFFINITY -vm -i$BASE_INTERVAL -d$DIFF_INTERVAL -p99 -t $NUM_THREADS --duration=$DURATION > cyclictest.log &
 cyclictest_pid=$!
 
 
