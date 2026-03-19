@@ -107,6 +107,7 @@ static pthread_t fifo_threadid;
 static int laptop = 0;
 static int power_management = 0;
 static int use_histfile = 0;
+static int delay = 0;  /* delay in seconds before starting test */
 
 static char *fileprefix;
 
@@ -1140,6 +1141,24 @@ static void *enclave_thread(void *param)
 
   	stat->threadstarted++;
 
+	/* Apply initial delay before starting the test (high priority) */
+	if (delay > 0 && par->tnum == 0) {
+		if (verbose)
+			printf("Delaying %d seconds before test start\n", delay);
+		for (int i = 0; i < delay; i++) {
+			struct timespec delay_ts;
+			clock_gettime(CLOCK_MONOTONIC, &delay_ts);
+			delay_ts.tv_sec += 1;
+			/* Use TIMER_ABSTIME for high priority sleep - wakes up at exact time */
+			if (clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &delay_ts, NULL) == 0) {
+				if (verbose)
+					printf("Delay progress: %d/%d seconds\n", i+1, delay);
+			}
+		}
+		/* Synchronize all threads after delay completes */
+		pthread_barrier_wait(&globalt_barr);
+	}
+
   	while(!shutdown){
 
 		uint64_t diff;
@@ -2157,6 +2176,9 @@ static void display_help(int error)
 	       "                           Reduce exit from idle latency by limiting idle state\n"
 	       "                           up to n on used cpus (-1 disables all idle states).\n"
 	       "                           Power management is not suppresed on other cpus.\n"
+	       "         --delay N          Delay N seconds before starting the test\n"
+	       "                           Uses high-priority nanosleep to wake up\n"
+	       "                           even under high load conditions\n"
 	       "         --default-system  Don't attempt to tune the system from cyclictest.\n"
 	       "                           Power management is not suppressed.\n"
 	       "                           This might give poorer results, but will allow you\n"
@@ -2331,7 +2353,8 @@ enum option_values {
 	OPT_TRIGGER_NODES, OPT_UNBUFFERED, OPT_NUMA, OPT_VERBOSE,
 	OPT_DBGCYCLIC, OPT_POLICY, OPT_HELP, OPT_NUMOPTS,
 	OPT_ALIGNED, OPT_SECALIGNED, OPT_LAPTOP, OPT_SMI,
-	OPT_TRACEMARK, OPT_POSIX_TIMERS, OPT_DEEPEST_IDLE_STATE, OPT_NO_ENCLAVE
+	OPT_TRACEMARK, OPT_POSIX_TIMERS, OPT_DEEPEST_IDLE_STATE, OPT_NO_ENCLAVE,
+	OPT_DELAY
 };
 
 
@@ -2391,6 +2414,7 @@ static void process_options(int argc, char *argv[], int max_cpus)
 			{"help",             no_argument,       NULL, OPT_HELP },
 			{"posix_timers",     no_argument,	NULL, OPT_POSIX_TIMERS },
 			{"deepest-idle-state", required_argument,	NULL, OPT_DEEPEST_IDLE_STATE },
+			{"delay",            required_argument, NULL, OPT_DELAY },
 			{NULL, 0, NULL, 0 },
 		};
 		int c = getopt_long(argc, argv, "a::A::b:c:d:D:F:h:H:i:l:MNo:p:mnqrRsSt::uvD:x",
@@ -2597,6 +2621,9 @@ static void process_options(int argc, char *argv[], int max_cpus)
 			trace_marker = 1; break;
 		case OPT_DEEPEST_IDLE_STATE:
 			deepest_idle_state = atoi(optarg);
+			break;
+		case OPT_DELAY:
+			delay = atoi(optarg);
 			break;
 		}
 	}
