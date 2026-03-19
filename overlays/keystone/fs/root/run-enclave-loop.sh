@@ -6,5 +6,5 @@ while true; do
     pid=$!
     wait "$pid"
     echo "waiting"
-    sleep 5
+    sleep 1
 done
