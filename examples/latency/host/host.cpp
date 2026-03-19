@@ -29,8 +29,6 @@ using namespace Keystone;
 #define CLOCK_FREQ 1000000UL    // HiFive Unmatched clock is 1MHz
 #define NSEC_PER_CYCLE (NSEC_PER_SEC / CLOCK_FREQ)
 
-static int no_enclave = 0;
-
 struct enclave_args {
 	const char* eapppath;
 	const char* runtimepath;
@@ -94,37 +92,31 @@ main(int argc, char** argv) {
 	enc_params.setFreeMemSize(256 * 1024);
 	enc_params.setUntrustedSize(256 * 1024);
 
-	struct timespec before_rd, encl_rd, after_rd = { 0 };
-	uintptr_t rdtime;
+	
 
+	for (int i = 0; i < 10; i++){
 
-	for (int i = 0; i< 10; i++){
+		struct timespec before_rd, encl_rd = { 0 };
 
-		uint64_t latency_1, latency_2;
+		uint64_t latency;
+		uintptr_t rdtime;
 
 		get_rdtime(&before_rd);
 
-		if (!no_enclave){
-			Enclave enclave;
-			enclave.init(argv[1], argv[2], argv[3], enc_params);
+		
+		Enclave enclave;
+		enclave.init(argv[1], argv[2], argv[3], enc_params);
 
-			enclave.registerOcallDispatch(incoming_call_dispatch);
-			edge_call_init_internals(
-				(uintptr_t)enclave.getSharedBuffer(), enclave.getSharedBufferSize());
-			enclave.run(&rdtime);
-			rdtimespec((unsigned long) rdtime, &encl_rd);
-		} else {
-			get_rdtime(&encl_rd);
-		}
+		enclave.registerOcallDispatch(incoming_call_dispatch);
+		edge_call_init_internals(
+			(uintptr_t)enclave.getSharedBuffer(), enclave.getSharedBufferSize());
+		enclave.run(&rdtime);
+		rdtimespec((unsigned long) rdtime, &encl_rd);
 
-		get_rdtime(&after_rd);
+		latency = calcdiff(encl_rd, before_rd);
 
-		latency_1 = calcdiff(encl_rd, before_rd);
-		latency_2 = calcdiff(after_rd, encl_rd);
+		printf("\t%.0f\n", (double) latency);
 
-		printf("%d: Encl start :%f,  Encl stop:%f, Tot:%f\n", i, (double) latency_1, (double) latency_2, (double) (latency_1 + latency_2));
-
-		sleep(1);
 	}
 
 }
