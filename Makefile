@@ -19,12 +19,13 @@ export KEYSTONE_SDK             ?= $(KEYSTONE)/sdk
 export KEYSTONE_BOOTROM         ?= $(KEYSTONE)/bootrom
 export KEYSTONE_SM              ?= $(KEYSTONE)/sm
 
+export RT						?=n
 
-ifeq ($(origin RT),undefined)
-    $(info stock)
-    export BUILDDIR             ?= $(KEYSTONE)/build-$(KEYSTONE_PLATFORM)$(KEYSTONE_BITS)
-else
+
+ifneq ($(filter y Y,$(RT)),)
     export BUILDDIR             ?= $(KEYSTONE)/build-$(KEYSTONE_PLATFORM)$(KEYSTONE_BITS)_rt
+else
+    export BUILDDIR             ?= $(KEYSTONE)/build-$(KEYSTONE_PLATFORM)$(KEYSTONE_BITS)
 endif
 
 export BUILDROOT_OVERLAYDIR     ?= $(BUILDDIR)/overlay
@@ -38,10 +39,10 @@ export KEYSTONE_BITS            ?= 64
 include mkutils/args.mk
 include mkutils/log.mk
 
-ifeq ($(origin RT), undefined)
-    BUILDROOT_CONFIGFILE        ?= riscv$(KEYSTONE_BITS)_$(KEYSTONE_PLATFORM)_defconfig
-else
+ifneq ($(filter y Y,$(RT)),)
     BUILDROOT_CONFIGFILE        ?= riscv$(KEYSTONE_BITS)_$(KEYSTONE_PLATFORM)_rt_defconfig
+else
+    BUILDROOT_CONFIGFILE        ?= riscv$(KEYSTONE_BITS)_$(KEYSTONE_PLATFORM)_defconfig
 endif
 
 
